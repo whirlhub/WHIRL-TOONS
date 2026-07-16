@@ -1,133 +1,96 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>WHIRL TOONS FINAL</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{background:#0f1123;color:white;text-align:center;font-family:Arial;margin:0}
-#toolbar{padding:8px;background:#1a1d3a}
-button{margin:3px;padding:10px 12px;font-size:14px;border:none;border-radius:10px;background:#8b5cf6;color:white;font-weight:bold}
-.bgbtn{background:#3b82f6}
-#stage{width:100%;height:480px;margin:0 auto;position:relative;overflow:hidden;touch-action:none;border-bottom:4px solid #8b5cf6}
-.char{width:80px;height:110px;position:absolute;font-size:60px;text-align:center;touch-action:none;user-select:none}
-.bubble{position:absolute;background:#fff;border:3px solid #000;border-radius:20px;padding:6px 10px;color:#000;font-size:14px;font-weight:bold;max-width:150px}
-.faceMenu{position:absolute;background:#222;padding:5px;border-radius:10px;display:none;z-index:50}
-.faceMenu span{font-size:30px;padding:5px;cursor:pointer}
-
-/* BACKGROUNDS - NO IMAGES NEEDED */
-.shop{background:linear-gradient(#d4a373 0 30%, #fefae0 30% 100%)}
-.shop::before{content:"🏪 SHOP";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
-.house{background:linear-gradient(#87CEEB 0 60%, #90EE90 60% 100%)}
-.house::before{content:"🏠 HOUSE";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
-.street{background:linear-gradient(#87CEEB 0 40%, #555 40% 70%, #333 70% 100%)}
-.street::before{content:"🛣️ STREET";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
-.school{background:linear-gradient(#87CEEB 0 50%, #8B4513 50% 100%)}
-.school::before{content:"🏫 SCHOOL";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
-</style>
+  <title>Voice Loop Beat Maker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { 
+      background:#0a0a0a; 
+      color:#00ff88; 
+      text-align:center; 
+      font-family: 'Arial Black', sans-serif;
+      padding-top: 50px;
+    }
+    h1 { font-size: 2.5em; text-shadow: 0 0 10px #00ff88; }
+    button { 
+      background: #00ff88; 
+      color: #000; 
+      border: none; 
+      padding: 20px 40px; 
+      margin: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button:hover { background: #00cc6a; }
+    #status { margin-top: 20px; font-size: 16px; }
+  </style>
 </head>
 <body>
-<h2>🌀 WHIRL TOONS STUDIO</h2>
-
-<div id="toolbar">
-<b>BG:</b>
-<button class="bgbtn" onclick="setBG('shop')">🏪 Shop</button>
-<button class="bgbtn" onclick="setBG('house')">🏠 House</button>
-<button class="bgbtn" onclick="setBG('street')">🛣️ Street</button>
-<button class="bgbtn" onclick="setBG('school')">🏫 School</button>
-<br>
-<b>CHAR:</b>
-<button onclick="addChar('🧑')">+🧑</button>
-<button onclick="addChar('👩')">+👩</button>
-<button onclick="addChar('👨‍🦰')">+👨‍🦰</button>
-<button onclick="addChar('👧')">+👧</button>
-<button onclick="download()" style="background:#22c55e">⬇️ Save</button>
-</div>
-
-<div id="stage" class="shop"></div>
+  <h1>🎤 VOICE LOOP MAKER</h1>
+  <p>Record a sound, then make it a beat</p>
+  
+  <button id="record">🔴 RECORD</button>
+  <button id="play">▶️ PLAY LOOP</button>
+  <button id="stop">⏹️ STOP</button>
+  <div id="status">Status: Ready</div>
 
 <script>
-let stage = document.getElementById('stage');
-let dragging = null;
-let offsetX, offsetY;
+let audioContext;
+let recordedBuffer;
+let isRecording = false;
+let recorder;
+let loopInterval;
+const status = document.getElementById('status');
 
-function setBG(type){
-  stage.className = type; // changes background instantly
-}
+document.getElementById('record').onclick = async () => {
+  if(!audioContext) audioContext = new AudioContext();
+  
+  if(!isRecording){
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    recorder = new MediaRecorder(stream);
+    let chunks = [];
+    
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = async () => {
+      const blob = new Blob(chunks);
+      const arrayBuffer = await blob.arrayBuffer();
+      recordedBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      status.innerText = "Status: Got your sound! Hit PLAY LOOP";
+      document.getElementById('record').innerText = "🔴 RECORD";
+    };
+    
+    recorder.start();
+    isRecording = true;
+    status.innerText = "Status: Recording for 3 seconds...";
+    document.getElementById('record').innerText = "🔴 RECORDING";
+    
+    setTimeout(() => { 
+      if(isRecording) {
+        recorder.stop(); 
+        isRecording=false; 
+      }
+    }, 3000);
+  }
+};
 
-function addChar(emoji){
-  let d = document.createElement('div');
-  d.className = 'char';
-  d.innerHTML = emoji;
-  d.style.left = '100px';
-  d.style.top = '250px';
-  d.onmousedown = startDrag; d.ontouchstart = startDrag;
-  d.onclick = (e)=>{e.stopPropagation(); openFaceMenu(d)}
-  stage.appendChild(d);
-}
+document.getElementById('play').onclick = () => {
+  if(!recordedBuffer) return status.innerText = "Status: Record something first!";
+  clearInterval(loopInterval);
+  status.innerText = "Status: LOOPING...";
+  loopInterval = setInterval(() => {
+    const source = audioContext.createBufferSource();
+    source.buffer = recordedBuffer;
+    source.connect(audioContext.destination);
+    source.start();
+  }, 500); // 500ms = 120 BPM. Change to 400 for faster
+};
 
-function startDrag(e){
-  dragging = e.target;
-  let touch = e.touches? e.touches[0] : e;
-  offsetX = touch.clientX - dragging.offsetLeft;
-  offsetY = touch.clientY - dragging.offsetTop;
-  document.onmousemove = drag; document.ontouchmove = drag;
-  document.onmouseup = stopDrag; document.ontouchend = stopDrag;
-}
-function drag(e){
-  if(!dragging) return;
-  let touch = e.touches? e.touches[0] : e;
-  dragging.style.left = (touch.clientX - offsetX) + 'px';
-  dragging.style.top = (touch.clientY - offsetY) + 'px';
-}
-function stopDrag(){ dragging = null; }
-
-function openFaceMenu(char){
-  closeMenus();
-  let menu = document.createElement('div');
-  menu.className = 'faceMenu';
-  menu.style.left = char.style.left;
-  menu.style.top = (parseInt(char.style.top)-80)+'px';
-  menu.innerHTML = `
-    <span onclick="setFace(char,'😀')">😀</span>
-    <span onclick="setFace(char,'😢')">😢</span>
-    <span onclick="setFace(char,'😡')">😡</span>
-    <span onclick="setFace(char,'😍')">😍</span>
-    <span onclick="setFace(char,'😴')">😴</span>
-    <span onclick="talk(char)">💬</span>
-    <span onclick="walk(char)">🚶</span>
-  `;
-  stage.appendChild(menu);
-  setTimeout(()=>document.onclick=closeMenus,100);
-}
-
-function setFace(char, face){ char.innerHTML=face; closeMenus(); }
-function closeMenus(){ document.querySelectorAll('.faceMenu').forEach(m=>m.remove()) }
-
-function talk(char){
-  let text = prompt("What should they say?");
-  if(!text) return;
-  let b = document.createElement('div');
-  b.className='bubble';
-  b.innerText=text;
-  b.style.left = (parseInt(char.style.left)-10)+'px';
-  b.style.top = (parseInt(char.style.top)-60)+'px';
-  stage.appendChild(b);
-  setTimeout(()=>b.remove(),3000);
-  closeMenus();
-}
-
-function walk(char){
-  let targetX = parseInt(char.style.left) + 120;
-  let interval = setInterval(()=>{
-    char.style.left = (parseInt(char.style.left)+6)+'px';
-    if(parseInt(char.style.left) >= targetX) clearInterval(interval);
-  },40);
-  closeMenus();
-}
-
-function download(){
-  alert("📹 TO SAVE YOUR CARTOON:\n\n1. Tap 'Save' then PLAY your scene\n2. Hold POWER + VOLUME DOWN = Screen Record\n3. Video saves to Gallery\n4. Share to WhatsApp/TikTok\n\nYour A58 Lite can do this. This is how everyone makes cartoons on Lite phones.");
-}
+document.getElementById('stop').onclick = () => {
+  clearInterval(loopInterval);
+  status.innerText = "Status: Stopped";
+};
 </script>
 </body>
   </html>
