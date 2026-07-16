@@ -1,96 +1,101 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Voice Loop Beat Maker</title>
+  <title>Voice Loop Beat Maker V2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { 
-      background:#0a0a0a; 
-      color:#00ff88; 
-      text-align:center; 
-      font-family: 'Arial Black', sans-serif;
-      padding-top: 50px;
-    }
-    h1 { font-size: 2.5em; text-shadow: 0 0 10px #00ff88; }
-    button { 
-      background: #00ff88; 
-      color: #000; 
-      border: none; 
-      padding: 20px 40px; 
-      margin: 10px;
-      font-size: 18px;
-      font-weight: bold;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    button:hover { background: #00cc6a; }
+    body { background:#0a0a0a; color:#00ff88; text-align:center; font-family: sans-serif; padding-top: 50px;}
+    h1 { text-shadow: 0 0 10px #00ff88; }
+    button { background: #00ff88; color: #000; border: none; padding: 20px 40px; margin: 10px; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer;}
+    button:disabled { background: #333; color: #666; }
     #status { margin-top: 20px; font-size: 16px; }
   </style>
 </head>
 <body>
-  <h1>🎤 VOICE LOOP MAKER</h1>
-  <p>Record a sound, then make it a beat</p>
+  <h1>🎤 VOICE LOOP MAKER V2</h1>
+  <p>1. Record 2. Play 3. Stop</p>
   
-  <button id="record">🔴 RECORD</button>
-  <button id="play">▶️ PLAY LOOP</button>
-  <button id="stop">⏹️ STOP</button>
-  <div id="status">Status: Ready</div>
+  <button id="record">🔴 RECORD 3s</button>
+  <button id="play" disabled>▶️ PLAY LOOP</button>
+  <button id="stop" disabled>⏹️ STOP</button>
+  <div id="status">Status: Tap to start</div>
 
 <script>
 let audioContext;
 let recordedBuffer;
-let isRecording = false;
-let recorder;
-let loopInterval;
+let loopSource;
+const recordBtn = document.getElementById('record');
+const playBtn = document.getElementById('play');
+const stopBtn = document.getElementById('stop');
 const status = document.getElementById('status');
 
-document.getElementById('record').onclick = async () => {
+recordBtn.onclick = async () => {
   if(!audioContext) audioContext = new AudioContext();
   
-  if(!isRecording){
-    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-    recorder = new MediaRecorder(stream);
-    let chunks = [];
+  status.innerText = "Status: Recording... Make some noise!";
+  recordBtn.disabled = true;
+  
+  const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+  const mic = audioContext.createMediaStreamSource(stream);
+  const recorder = audioContext.createScriptProcessor(4096, 1, 1);
+  const audioData = [];
+  
+  recorder.onaudioprocess = e => {
+    audioData.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  };
+  
+  mic.connect(recorder);
+  recorder.connect(audioContext.destination);
+  
+  setTimeout(() => {
+    recorder.disconnect();
+    mic.disconnect();
+    stream.getTracks().forEach(track => track.stop());
     
-    recorder.ondataavailable = e => chunks.push(e.data);
-    recorder.onstop = async () => {
-      const blob = new Blob(chunks);
-      const arrayBuffer = await blob.arrayBuffer();
-      recordedBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      status.innerText = "Status: Got your sound! Hit PLAY LOOP";
-      document.getElementById('record').innerText = "🔴 RECORD";
-    };
+    // Combine all the audio chunks
+    let length = audioData.reduce((acc, arr) => acc + arr.length, 0);
+    let result = new Float32Array(length);
+    let offset = 0;
+    audioData.forEach(arr => { result.set(arr, offset); offset += arr.length; });
     
-    recorder.start();
-    isRecording = true;
-    status.innerText = "Status: Recording for 3 seconds...";
-    document.getElementById('record').innerText = "🔴 RECORDING";
+    recordedBuffer = audioContext.createBuffer(1, result.length, audioContext.sampleRate);
+    recordedBuffer.getChannelData(0).set(result);
     
-    setTimeout(() => { 
-      if(isRecording) {
-        recorder.stop(); 
-        isRecording=false; 
-      }
-    }, 3000);
-  }
+    status.innerText = "Status: Got it! Hit PLAY LOOP";
+    recordBtn.disabled = false;
+    playBtn.disabled = false;
+  }, 3000);
 };
 
-document.getElementById('play').onclick = () => {
-  if(!recordedBuffer) return status.innerText = "Status: Record something first!";
-  clearInterval(loopInterval);
+playBtn.onclick = () => {
+  if(!recordedBuffer) return;
+  stopLoop();
+  
+  loopSource = audioContext.createBufferSource();
+  loopSource.buffer = recordedBuffer;
+  loopSource.loop = true; // THIS is the key - real looping
+  loopSource.connect(audioContext.destination);
+  loopSource.start();
+  
   status.innerText = "Status: LOOPING...";
-  loopInterval = setInterval(() => {
-    const source = audioContext.createBufferSource();
-    source.buffer = recordedBuffer;
-    source.connect(audioContext.destination);
-    source.start();
-  }, 500); // 500ms = 120 BPM. Change to 400 for faster
+  playBtn.disabled = true;
+  stopBtn.disabled = false;
 };
 
-document.getElementById('stop').onclick = () => {
-  clearInterval(loopInterval);
+stopBtn.onclick = () => {
+  stopLoop();
   status.innerText = "Status: Stopped";
+  playBtn.disabled = false;
+  stopBtn.disabled = true;
 };
+
+function stopLoop(){
+  if(loopSource){
+    loopSource.stop();
+    loopSource.disconnect();
+    loopSource = null;
+  }
+}
 </script>
 </body>
   </html>
