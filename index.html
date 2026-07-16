@@ -1,116 +1,132 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>WHIRL TOONS DRAMA CAST</title>
+<title>WHIRL TOONS DIRECTOR</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body{background:#0f1123;color:white;text-align:center;font-family:Arial;padding:8px}
-button{margin:4px;padding:10px 14px;font-size:14px;border:none;border-radius:10px;background:#8b5cf6;color:white;font-weight:bold}
-#stage{width:98%;height:450px;margin:10px auto;background:#fff;border:4px solid #8b5cf6;position:relative;overflow:hidden}
-.char{width:60px;height:100px;position:absolute;font-size:45px;text-align:center;transition: all 0.4s}
-.bubble{position:absolute;background:#fff;border:2px solid #000;border-radius:15px;padding:6px 10px;color:#000;font-size:13px;font-weight:bold;max-width:120px;z-index:10}
-.z{position:absolute;bottom:10px;right:20px;font-size:30px;display:none} /* for sleeping Zzz */
+.controls{background:#222;padding:10px;border-radius:10px;margin-bottom:10px}
+select,input,button{margin:4px;padding:10px;font-size:15px;border:none;border-radius:8px}
+button{background:#8b5cf6;color:white;font-weight:bold}
+#stage{width:98%;height:400px;margin:10px auto;background:#fff;border:4px solid #8b5cf6;position:relative;overflow:hidden}
+.char{width:60px;height:100px;position:absolute;font-size:50px;text-align:center;transition: all 0.3s;cursor:pointer}
+.bubble{position:absolute;background:#fff;border:2px solid #000;border-radius:15px;padding:6px 10px;color:#000;font-size:14px;font-weight:bold;max-width:130px;z-index:10}
+.z{position:absolute;font-size:25px;display:none}
 </style>
 </head>
 <body>
-<h2>🌀 WHIRL TOONS DRAMA CAST</h2>
+<h2>🌀 WHIRL TOONS DIRECTOR MODE</h2>
 
-<button onclick="addMany()">Add 5 Characters</button>
-<button onclick="makeFeel()">Make Them Feel</button>
-<button onclick="makeTalk()">Conversation</button>
-<button onclick="makeSleep()">Make Them Sleep</button>
-<button onclick="clearAll()">Reset</button>
+<div class="controls">
+  <b>Add Character:</b>
+  <select id="emojiPick">
+    <option>😀</option><option>😢</option><option>😡</option>
+    <option>😍</option><option>😴</option><option>🥺</option><option>😂</option>
+  </select>
+  <button onclick="addChar()">+ Add</button>
+  <br>
+
+  <b>Pick Character:</b>
+  <select id="charPick"></select>
+
+  <b>Action:</b>
+  <select id="actionPick">
+    <option value="happy">😀 Happy</option>
+    <option value="cry">😢 Cry</option>
+    <option value="angry">😡 Angry</option>
+    <option value="love">😍 Love</option>
+    <option value="sleep">😴 Sleep</option>
+    <option value="talk">💬 Talk</option>
+  </select>
+  <input id="talkText" placeholder="Type words here">
+  <button onclick="doAction()">GO!</button>
+  <br>
+  <button onclick="clearAll()" style="background:red">Reset Stage</button>
+</div>
 
 <div id="stage"></div>
 
 <script>
 let stage = document.getElementById('stage');
-let cast = [];
-let faces = ['😀','😢','😡','😍','😴','😮','🥺','😂'];
+let charPick = document.getElementById('charPick');
+let charCount = 0;
+let chars = {};
 
-function addMany(){
-  stage.innerHTML = '';
-  cast = [];
-  let names = ['😀','😢','😡','😍','😴']; // 5 different chars
-  for(let i=0;i<5;i++){
-    let d = document.createElement('div');
-    d.className = 'char';
-    d.innerHTML = names[i];
-    d.style.left = (i*65+20)+'px'; // spread them out
-    d.style.top = '200px';
-    d.id = 'char'+i;
-    stage.appendChild(d);
+function addChar(){
+  let emoji = document.getElementById('emojiPick').value;
+  let id = 'char'+charCount;
 
-    // add Zzz for sleep
-    let z = document.createElement('div');
-    z.className = 'z';
-    z.id = 'z'+i;
-    z.innerHTML = '💤';
-    stage.appendChild(z);
+  let d = document.createElement('div');
+  d.className = 'char';
+  d.id = id;
+  d.innerHTML = emoji;
+  d.style.left = (charCount*70+20)+'px';
+  d.style.top = '180px';
+  stage.appendChild(d);
 
-    cast.push(d);
+  // add Zzz
+  let z = document.createElement('div');
+  z.className = 'z';
+  z.id = 'z'+charCount;
+  z.innerHTML = '💤';
+  stage.appendChild(z);
+
+  chars[id] = {emoji:emoji, x:charCount*70+20, y:180};
+
+  // add to dropdown
+  let opt = document.createElement('option');
+  opt.value = id;
+  opt.innerText = 'Character '+(charCount+1)+' '+emoji;
+  charPick.appendChild(opt);
+
+  charCount++;
+}
+
+function doAction(){
+  let id = charPick.value;
+  let action = document.getElementById('actionPick').value;
+  let c = document.getElementById(id);
+  if(!c) return alert("Add a character first!");
+
+  // clear old bubble
+  document.querySelectorAll('.bubble').forEach(b=>b.remove());
+
+  if(action=='happy'){ c.innerHTML='😀'; c.style.top='170px'; }
+  if(action=='cry'){
+    c.innerHTML='😢';
+    let tear = document.createElement('div');
+    tear.innerHTML='💧'; tear.style.position='absolute';
+    tear.style.left = (chars[id].x+30)+'px'; tear.style.top = (chars[id].y+40)+'px';
+    tear.style.fontSize='20px'; stage.appendChild(tear);
+    setTimeout(()=>tear.remove(),2000);
+  }
+  if(action=='angry'){ c.innerHTML='😡'; c.style.top='170px'; }
+  if(action=='love'){ c.innerHTML='😍'; }
+  if(action=='sleep'){
+    c.innerHTML='😴'; c.style.top='230px';
+    document.getElementById('z'+id.replace('char','')).style.display='block';
+    document.getElementById('z'+id.replace('char','')).style.left = (chars[id].x+15)+'px';
+    document.getElementById('z'+id.replace('char','')).style.top = (chars[id].y-40)+'px';
+  }
+  if(action=='talk'){
+    let text = document.getElementById('talkText').value;
+    if(text=='') return alert("Type what they should say!");
+    c.innerHTML='😮'; // mouth open
+    let b = document.createElement('div');
+    b.className='bubble';
+    b.innerText=text;
+    b.style.left = (chars[id].x-10)+'px';
+    b.style.top = (chars[id].y-60)+'px';
+    stage.appendChild(b);
+    setTimeout(()=>{c.innerHTML=chars[id].emoji;},2000);
   }
 }
 
-function makeFeel(){ // FEEL + CRY
-  cast.forEach((c,i)=>{
-    setTimeout(()=>{
-      let emotions = ['😢','😡','😍','🥺','😂'];
-      c.innerHTML = emotions[i];
-      c.style.top = '220px'; // slight bounce = feeling
-
-      // if crying, add tears
-      if(c.innerHTML=='😢'){
-        let tear = document.createElement('div');
-        tear.innerHTML = '💧';
-        tear.style.position='absolute';
-        tear.style.left = parseInt(c.style.left)+30+'px';
-        tear.style.top = parseInt(c.style.top)+40+'px';
-        tear.style.fontSize='20px';
-        stage.appendChild(tear);
-        setTimeout(()=>tear.remove(),2000);
-      }
-    }, i*300);
-  });
-}
-
-function makeTalk(){ // TALK TO EACH OTHER
-  if(cast.length==0) return;
-  let messages = ["I'm sad bro","Cheer up!","I’m angry!","I love you guys","Let's sleep"];
-
-  cast.forEach((c,i)=>{
-    setTimeout(()=>{
-      // speech bubble
-      let b = document.createElement('div');
-      b.className = 'bubble';
-      b.innerText = messages[i];
-      b.style.left = parseInt(c.style.left)-20+'px';
-      b.style.top = parseInt(c.style.top)-50+'px';
-      stage.appendChild(b);
-
-      // mouth open
-      c.innerHTML = '😮';
-      setTimeout(()=>{
-        c.innerHTML = faces[i]; // back to face
-        b.remove();
-      },2000);
-    }, i*2500); // each talks one by one
-  });
-}
-
-function makeSleep(){ // SLEEP
-  cast.forEach((c,i)=>{
-    c.innerHTML = '😴';
-    c.style.top = '250px'; // lay down
-    document.getElementById('z'+i).style.display='block';
-    document.getElementById('z'+i).style.left = parseInt(c.style.left)+20+'px';
-    document.getElementById('z'+i).style.top = parseInt(c.style.top)-30+'px';
-  });
-}
-
 function clearAll(){
-  stage.innerHTML = '';
-  cast = [];
+  stage.innerHTML='';
+  charPick.innerHTML='';
+  chars={};
+  charCount=0;
 }
 </script>
 </body>
