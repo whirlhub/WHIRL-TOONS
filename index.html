@@ -8,11 +8,21 @@ body{background:#0f1123;color:white;text-align:center;font-family:Arial;margin:0
 #toolbar{padding:8px;background:#1a1d3a}
 button{margin:3px;padding:10px 12px;font-size:14px;border:none;border-radius:10px;background:#8b5cf6;color:white;font-weight:bold}
 .bgbtn{background:#3b82f6}
-#stage{width:100%;height:480px;margin:0 auto;background:url('https://i.imgur.com/8KmNp7E.png') center/cover;position:relative;overflow:hidden;touch-action:none} /* Shop bg */
+#stage{width:100%;height:480px;margin:0 auto;position:relative;overflow:hidden;touch-action:none;border-bottom:4px solid #8b5cf6}
 .char{width:80px;height:110px;position:absolute;font-size:60px;text-align:center;touch-action:none;user-select:none}
 .bubble{position:absolute;background:#fff;border:3px solid #000;border-radius:20px;padding:6px 10px;color:#000;font-size:14px;font-weight:bold;max-width:150px}
 .faceMenu{position:absolute;background:#222;padding:5px;border-radius:10px;display:none;z-index:50}
 .faceMenu span{font-size:30px;padding:5px;cursor:pointer}
+
+/* BACKGROUNDS - NO IMAGES NEEDED */
+.shop{background:linear-gradient(#d4a373 0 30%, #fefae0 30% 100%)}
+.shop::before{content:"🏪 SHOP";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
+.house{background:linear-gradient(#87CEEB 0 60%, #90EE90 60% 100%)}
+.house::before{content:"🏠 HOUSE";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
+.street{background:linear-gradient(#87CEEB 0 40%, #555 40% 70%, #333 70% 100%)}
+.street::before{content:"🛣️ STREET";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
+.school{background:linear-gradient(#87CEEB 0 50%, #8B4513 50% 100%)}
+.school::before{content:"🏫 SCHOOL";position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:30px}
 </style>
 </head>
 <body>
@@ -30,25 +40,18 @@ button{margin:3px;padding:10px 12px;font-size:14px;border:none;border-radius:10p
 <button onclick="addChar('👩')">+👩</button>
 <button onclick="addChar('👨‍🦰')">+👨‍🦰</button>
 <button onclick="addChar('👧')">+👧</button>
-<button onclick="downloadGIF()">⬇️ Download</button>
+<button onclick="download()" style="background:#22c55e">⬇️ Save</button>
 </div>
 
-<div id="stage"></div>
+<div id="stage" class="shop"></div>
 
 <script>
 let stage = document.getElementById('stage');
 let dragging = null;
 let offsetX, offsetY;
 
-const bgs = {
-  shop: 'https://i.imgur.com/8KmNp7E.png', // shop
-  house: 'https://i.imgur.com/LQjv4qM.png', // house
-  street: 'https://i.imgur.com/3ZQZ8QZ.png', // street
-  school: 'https://i.imgur.com/9QwKxQw.png' // school
-}
-
 function setBG(type){
-  stage.style.background = `url('${bgs[type]}') center/cover`;
+  stage.className = type; // changes background instantly
 }
 
 function addChar(emoji){
@@ -57,11 +60,8 @@ function addChar(emoji){
   d.innerHTML = emoji;
   d.style.left = '100px';
   d.style.top = '250px';
-
-  // DRAG
   d.onmousedown = startDrag; d.ontouchstart = startDrag;
   d.onclick = (e)=>{e.stopPropagation(); openFaceMenu(d)}
-
   stage.appendChild(d);
 }
 
@@ -117,16 +117,16 @@ function talk(char){
 }
 
 function walk(char){
-  let targetX = parseInt(char.style.left) + 100;
+  let targetX = parseInt(char.style.left) + 120;
   let interval = setInterval(()=>{
-    char.style.left = (parseInt(char.style.left)+5)+'px';
+    char.style.left = (parseInt(char.style.left)+6)+'px';
     if(parseInt(char.style.left) >= targetX) clearInterval(interval);
-  },50);
+  },40);
   closeMenus();
 }
 
-function downloadGIF(){
-  alert("⬇️ SAVE YOUR CARTOON\n\nStep 1: Arrange your scene\nStep 2: Hold POWER + VOLUME DOWN\nStep 3: Your phone records video\nStep 4: Go to Gallery > Share to WhatsApp\nThis is how Toontastic + Alight Motion do it on A58 Lite. Real MP4 button needs an app, not a website.");
+function download(){
+  alert("📹 TO SAVE YOUR CARTOON:\n\n1. Tap 'Save' then PLAY your scene\n2. Hold POWER + VOLUME DOWN = Screen Record\n3. Video saves to Gallery\n4. Share to WhatsApp/TikTok\n\nYour A58 Lite can do this. This is how everyone makes cartoons on Lite phones.");
 }
 </script>
 </body>
