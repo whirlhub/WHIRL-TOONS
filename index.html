@@ -1,56 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>WHIRL TOONS</title>
+<title>WHIRL TOONS ANIMATE</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body{background:#0f1123;color:white;text-align:center;font-family:Arial}
-button{margin:5px;padding:12px 20px;font-size:16px;border:none;border-radius:10px;background:#8b5cf6;color:white}
-#box{width:90%;height:400px;margin:10px auto;background:white;border:3px solid #8b5cf6;position:relative;overflow:hidden}
-.char{width:60px;height:100px;position:absolute;background:#ffd93d;border-radius:50% 50% 10px 10px}
+button{margin:5px;padding:12px 18px;font-size:16px;border:none;border-radius:10px;background:#8b5cf6;color:white}
+#box{width:95%;height:400px;margin:10px auto;background:white;border:3px solid #8b5cf6;position:relative;overflow:hidden}
+.char{width:60px;height:100px;position:absolute;font-size:50px;text-align:center;transition: all 0.3s} /* this makes it move */
+.bubble{position:absolute;background:#fff;border:2px solid #000;border-radius:15px;padding:5px 10px;color:#000;font-size:14px}
 </style>
 </head>
 <body>
-<h2>🌀 WHIRL TOONS ULTRA LITE</h2>
+<h2>🌀 WHIRL TOONS ANIMATE</h2>
 
 <button onclick="addChar()">Add Character</button>
-<button onclick="addText()">Add Text</button>
+<button onclick="makeDance()">Make Them Dance</button>
+<button onclick="addTalk()">Make Them Talk</button>
 <button onclick="clearAll()">Clear</button>
 
 <div id="box"></div>
 
 <script>
 let box = document.getElementById('box');
+let chars = [];
+let talking = false;
 
 function addChar(){
   let d = document.createElement('div');
   d.className = 'char';
-  d.style.left = Math.random()*200+'px';
-  d.style.top = Math.random()*200+'px';
   d.innerHTML = '😀';
-  d.style.fontSize = '30px';
-  d.style.textAlign = 'center';
-  d.style.lineHeight = '60px';
+  d.style.left = Math.random()*250+'px';
+  d.style.top = Math.random()*250+'px';
   box.appendChild(d);
+  chars.push(d);
 }
 
-function addText(){
-  let t = prompt("Type text:");
-  if(t){
-    let d = document.createElement('div');
-    d.innerText = t;
-    d.style.color = 'black';
-    d.style.fontSize = '20px';
-    d.style.fontWeight = 'bold';
-    d.style.position = 'absolute';
-    d.style.left = '20px';
-    d.style.top = '20px';
-    box.appendChild(d);
-  }
+function makeDance(){ // NOT STATIC ANYMORE
+  chars.forEach((c,i)=>{
+    setInterval(()=>{
+      c.style.top = parseInt(c.style.top) + (Math.random()*20-10) + 'px';
+      c.style.left = parseInt(c.style.left) + (Math.random()*20-10) + 'px';
+      c.innerHTML = ['😀','😁','😆'][Math.floor(Math.random()*3)]; // face changes
+    }, 400);
+  });
+}
+
+function addTalk(){
+  if(chars.length==0) return;
+  let c = chars[0];
+  let b = document.createElement('div');
+  b.className = 'bubble';
+  b.innerText = prompt("What should they say?");
+  b.style.left = parseInt(c.style.left)+50+'px';
+  b.style.top = parseInt(c.style.top)-30+'px';
+  box.appendChild(b);
+
+  // fake mouth moving
+  talking = setInterval(()=>{
+    c.innerHTML = c.innerHTML=='😀'? '😮' : '😀';
+  }, 200);
+  setTimeout(()=>clearInterval(talking), 3000);
 }
 
 function clearAll(){
   box.innerHTML = '';
+  chars = [];
 }
 </script>
 </body>
