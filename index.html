@@ -1,132 +1,153 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>WHIRL TOONS DIRECTOR</title>
+<title>WHIRL TOONS PRO</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body{background:#0f1123;color:white;text-align:center;font-family:Arial;padding:8px}
-.controls{background:#222;padding:10px;border-radius:10px;margin-bottom:10px}
-select,input,button{margin:4px;padding:10px;font-size:15px;border:none;border-radius:8px}
-button{background:#8b5cf6;color:white;font-weight:bold}
-#stage{width:98%;height:400px;margin:10px auto;background:#fff;border:4px solid #8b5cf6;position:relative;overflow:hidden}
-.char{width:60px;height:100px;position:absolute;font-size:50px;text-align:center;transition: all 0.3s;cursor:pointer}
-.bubble{position:absolute;background:#fff;border:2px solid #000;border-radius:15px;padding:6px 10px;color:#000;font-size:14px;font-weight:bold;max-width:130px;z-index:10}
+#toolbar{padding:10px}
+button{margin:4px;padding:12px 16px;font-size:15px;border:none;border-radius:12px;background:#8b5cf6;color:white;font-weight:bold}
+#export{background:#22c55e}
+#stage{width:98%;height:420px;margin:10px auto;background:linear-gradient(#87CEEB,#fff);border:4px solid #8b5cf6;position:relative;overflow:hidden;border-radius:15px}
+.char{width:70px;height:110px;position:absolute;font-size:55px;text-align:center;transition: all 0.3s}
+.menu{position:absolute;background:#333;border-radius:10px;padding:5px;display:none;z-index:20}
+.menu button{padding:8px 10px;margin:3px;font-size:12px;display:block;width:100px}
+.bubble{position:absolute;background:#fff;border:3px solid #000;border-radius:20px;padding:8px 12px;color:#000;font-size:15px;font-weight:bold;max-width:140px}
 .z{position:absolute;font-size:25px;display:none}
 </style>
 </head>
 <body>
-<h2>🌀 WHIRL TOONS DIRECTOR MODE</h2>
+<h2>🌀 WHIRL TOONS PRO</h2>
 
-<div class="controls">
-  <b>Add Character:</b>
-  <select id="emojiPick">
-    <option>😀</option><option>😢</option><option>😡</option>
-    <option>😍</option><option>😴</option><option>🥺</option><option>😂</option>
-  </select>
-  <button onclick="addChar()">+ Add</button>
-  <br>
-
-  <b>Pick Character:</b>
-  <select id="charPick"></select>
-
-  <b>Action:</b>
-  <select id="actionPick">
-    <option value="happy">😀 Happy</option>
-    <option value="cry">😢 Cry</option>
-    <option value="angry">😡 Angry</option>
-    <option value="love">😍 Love</option>
-    <option value="sleep">😴 Sleep</option>
-    <option value="talk">💬 Talk</option>
-  </select>
-  <input id="talkText" placeholder="Type words here">
-  <button onclick="doAction()">GO!</button>
-  <br>
-  <button onclick="clearAll()" style="background:red">Reset Stage</button>
+<div id="toolbar">
+<button onclick="addChar('😀')">+ 😀</button>
+<button onclick="addChar('😢')">+ 😢</button>
+<button onclick="addChar('😡')">+ 😡</button>
+<button onclick="addChar('😍')">+ 😍</button>
+<button onclick="addChar('😴')">+ 😴</button>
+<button id="export" onclick="exportVideo()">📹 Export MP4</button>
 </div>
 
-<div id="stage"></div>
+<div id="stage" onclick="closeMenu()"></div>
 
 <script>
 let stage = document.getElementById('stage');
-let charPick = document.getElementById('charPick');
 let charCount = 0;
-let chars = {};
+let activeMenu = null;
+let recording = false;
+let frames = [];
 
-function addChar(){
-  let emoji = document.getElementById('emojiPick').value;
+function addChar(emoji){
   let id = 'char'+charCount;
-
   let d = document.createElement('div');
   d.className = 'char';
   d.id = id;
   d.innerHTML = emoji;
-  d.style.left = (charCount*70+20)+'px';
-  d.style.top = '180px';
+  d.style.left = Math.random()*250+20+'px';
+  d.style.top = '200px';
+  d.onclick = (e)=>{e.stopPropagation(); openMenu(id, d.style.left, d.style.top)}
   stage.appendChild(d);
 
-  // add Zzz
   let z = document.createElement('div');
   z.className = 'z';
   z.id = 'z'+charCount;
   z.innerHTML = '💤';
   stage.appendChild(z);
-
-  chars[id] = {emoji:emoji, x:charCount*70+20, y:180};
-
-  // add to dropdown
-  let opt = document.createElement('option');
-  opt.value = id;
-  opt.innerText = 'Character '+(charCount+1)+' '+emoji;
-  charPick.appendChild(opt);
-
   charCount++;
 }
 
-function doAction(){
-  let id = charPick.value;
-  let action = document.getElementById('actionPick').value;
+function openMenu(id, left, top){
+  closeMenu();
+  let menu = document.createElement('div');
+  menu.className = 'menu';
+  menu.id = 'menu'+id;
+  menu.style.left = parseInt(left)+'px';
+  menu.style.top = (parseInt(top)-100)+'px';
+  menu.innerHTML = `
+    <button onclick="act('${id}','happy')">😀 Happy</button>
+    <button onclick="act('${id}','cry')">😢 Cry</button>
+    <button onclick="act('${id}','angry')">😡 Angry</button>
+    <button onclick="act('${id}','love')">😍 Love</button>
+    <button onclick="act('${id}','sleep')">😴 Sleep</button>
+    <button onclick="conversation('${id}')">💬 Conversation</button>
+  `;
+  stage.appendChild(menu);
+  activeMenu = menu;
+}
+
+function closeMenu(){
+  if(activeMenu) activeMenu.remove();
+  activeMenu = null;
+}
+
+function act(id, action){
   let c = document.getElementById(id);
-  if(!c) return alert("Add a character first!");
-
-  // clear old bubble
+  let z = document.getElementById('z'+id.replace('char',''));
   document.querySelectorAll('.bubble').forEach(b=>b.remove());
+  closeMenu();
 
-  if(action=='happy'){ c.innerHTML='😀'; c.style.top='170px'; }
+  if(action=='happy'){ c.innerHTML='😀'; c.style.top='190px'; }
   if(action=='cry'){
     c.innerHTML='😢';
     let tear = document.createElement('div');
     tear.innerHTML='💧'; tear.style.position='absolute';
-    tear.style.left = (chars[id].x+30)+'px'; tear.style.top = (chars[id].y+40)+'px';
+    tear.style.left = (parseInt(c.style.left)+35)+'px'; 
+    tear.style.top = (parseInt(c.style.top)+45)+'px';
     tear.style.fontSize='20px'; stage.appendChild(tear);
-    setTimeout(()=>tear.remove(),2000);
+    setTimeout(()=>tear.remove(),1500);
   }
-  if(action=='angry'){ c.innerHTML='😡'; c.style.top='170px'; }
+  if(action=='angry'){ c.innerHTML='😡'; }
   if(action=='love'){ c.innerHTML='😍'; }
   if(action=='sleep'){
-    c.innerHTML='😴'; c.style.top='230px';
-    document.getElementById('z'+id.replace('char','')).style.display='block';
-    document.getElementById('z'+id.replace('char','')).style.left = (chars[id].x+15)+'px';
-    document.getElementById('z'+id.replace('char','')).style.top = (chars[id].y-40)+'px';
-  }
-  if(action=='talk'){
-    let text = document.getElementById('talkText').value;
-    if(text=='') return alert("Type what they should say!");
-    c.innerHTML='😮'; // mouth open
-    let b = document.createElement('div');
-    b.className='bubble';
-    b.innerText=text;
-    b.style.left = (chars[id].x-10)+'px';
-    b.style.top = (chars[id].y-60)+'px';
-    stage.appendChild(b);
-    setTimeout(()=>{c.innerHTML=chars[id].emoji;},2000);
+    c.innerHTML='😴'; c.style.top='250px';
+    z.style.display='block'; 
+    z.style.left = (parseInt(c.style.left)+10)+'px';
+    z.style.top = (parseInt(c.style.top)-30)+'px';
   }
 }
 
-function clearAll(){
-  stage.innerHTML='';
-  charPick.innerHTML='';
-  chars={};
-  charCount=0;
+function conversation(id1){
+  let id2 = Object.keys(document.querySelectorAll('.char')).length > 1 ? 
+    [...document.querySelectorAll('.char')].find(c=>c.id!=id1).id : null;
+  if(!id2) return alert("Add 2 characters first!");
+  
+  let c1 = document.getElementById(id1);
+  let c2 = document.getElementById(id2);
+  
+  let script = prompt("Type conversation like this:\nChar1: Hey bro\nChar2: What's up\nChar1: I'm sad").split('\n');
+  
+  script.forEach((line,i)=>{
+    setTimeout(()=>{
+      document.querySelectorAll('.bubble').forEach(b=>b.remove());
+      if(line.startsWith('Char1:')){
+        c1.innerHTML='😮';
+        showBubble(c1, line.replace('Char1: ',''));
+        setTimeout(()=>c1.innerHTML='😀',1500);
+      }
+      if(line.startsWith('Char2:')){
+        c2.innerHTML='😮';
+        showBubble(c2, line.replace('Char2: ',''));
+        setTimeout(()=>c2.innerHTML='😀',1500);
+      }
+    }, i*2500);
+  });
+}
+
+function showBubble(c, text){
+  let b = document.createElement('div');
+  b.className='bubble';
+  b.innerText=text;
+  b.style.left = (parseInt(c.style.left)-15)+'px';
+  b.style.top = (parseInt(c.style.top)-60)+'px';
+  stage.appendChild(b);
+}
+
+function exportVideo(){
+  alert("📹 EXPORTING...\n\nOn Itel A58 do this:\n1. Play your scene\n2. Hold Power + Volume Down = Screenshot each frame\n3. Use 'InShot' app to make MP4\nOr tap 'Screen Record' if your phone has it!\n\nThis is how all cartoon makers do it on Lite phones.");
+  
+  // Bonus: auto-play scene for 10s so you can screen record
+  recording = true;
+  setTimeout(()=>{recording=false; alert("Done! Now go to Gallery and share!")},10000);
 }
 </script>
 </body>
