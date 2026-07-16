@@ -1,53 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>WHIRL TOONS LITE</title>
+<title>WHIRL TOONS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body{margin:0;background:#111;color:#fff;font-family:sans-serif}
-  #tools{padding:10px;background:#222;display:flex;gap:8px;flex-wrap:wrap}
-  button{padding:10px;border:none;border-radius:8px;background:#7f5af0;color:#fff;font-weight:bold}
-  #canvas{width:100%;height:70vh;background:#fff;display:block;border-top:3px solid #7f5af0}
+body{background:#0f1123;color:white;text-align:center;font-family:Arial}
+button{margin:5px;padding:12px 20px;font-size:16px;border:none;border-radius:10px;background:#8b5cf6;color:white}
+#box{width:90%;height:400px;margin:10px auto;background:white;border:3px solid #8b5cf6;position:relative;overflow:hidden}
+.char{width:60px;height:100px;position:absolute;background:#ffd93d;border-radius:50% 50% 10px 10px}
 </style>
 </head>
 <body>
-<div id="tools">
-  <h3 style="width:100%;margin:0;color:#7f5af0">🌀 WHIRL TOONS LITE</h3>
-  <button onclick="addChar()">😀 Add Char</button>
-  <button onclick="addText()">💬 Text</button>
-  <button onclick="changeBG()">🎨 BG</button>
-  <button onclick="save()">⬇ Save</button>
-</div>
-<canvas id="canvas"></canvas>
+<h2>🌀 WHIRL TOONS ULTRA LITE</h2>
+
+<button onclick="addChar()">Add Character</button>
+<button onclick="addText()">Add Text</button>
+<button onclick="clearAll()">Clear</button>
+
+<div id="box"></div>
 
 <script>
-const c=document.getElementById('canvas');
-const ctx=c.getContext('2d');
-c.width=window.innerWidth; c.height=window.innerHeight*0.7;
-let bg=0; let bgs=['#fff','#e0f2ff','#fff0f5','#e0ffe0'];
+let box = document.getElementById('box');
 
 function addChar(){
-  ctx.fillStyle='#ffd93d';
-  ctx.beginPath(); ctx.arc(150,150,30,0,Math.PI*2); ctx.fill(); // head
-  ctx.fillStyle='#7f5af0';
-  ctx.fillRect(130,180,40,60); // body
+  let d = document.createElement('div');
+  d.className = 'char';
+  d.style.left = Math.random()*200+'px';
+  d.style.top = Math.random()*200+'px';
+  d.innerHTML = '😀';
+  d.style.fontSize = '30px';
+  d.style.textAlign = 'center';
+  d.style.lineHeight = '60px';
+  box.appendChild(d);
 }
+
 function addText(){
-  let t=prompt("What to say?");
-  ctx.fillStyle='#000'; ctx.font='20px Comic Sans MS';
-  ctx.fillText(t, 100, 100);
+  let t = prompt("Type text:");
+  if(t){
+    let d = document.createElement('div');
+    d.innerText = t;
+    d.style.color = 'black';
+    d.style.fontSize = '20px';
+    d.style.fontWeight = 'bold';
+    d.style.position = 'absolute';
+    d.style.left = '20px';
+    d.style.top = '20px';
+    box.appendChild(d);
+  }
 }
-function changeBG(){
-  bg=(bg+1)%bgs.length;
-  ctx.fillStyle=bgs[bg];
-  ctx.fillRect(0,0,c.width,c.height);
+
+function clearAll(){
+  box.innerHTML = '';
 }
-function save(){
-  let a=document.createElement('a');
-  a.download='whirl-toons-lite.png';
-  a.href=c.toDataURL(); a.click();
-}
-changeBG(); // start with white bg
 </script>
 </body>
   </html>
