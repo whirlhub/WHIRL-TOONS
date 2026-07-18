@@ -2,110 +2,98 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>NF STUDIO PRO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NF VOCAL STUDIO</title>
 <style>
-  body { background:#000; color:#fff; font-family:Arial; text-align:center; padding:30px; }
-  h1 { color:#ff0033; }
-  button { background:#ff0033; border:0; padding:16px 35px; margin:8px; border-radius:4px; color:#fff; font-weight:bold; cursor:pointer; }
-  button:disabled { background:#333; }
-  .knob { display:inline-block; margin:12px; }
-  input[type=range] { accent-color:#ff0033; }
-  label { font-size:10px; color:#aaa; display:block; }
+  body { background:#0a0a0a; color:#fff; font-family:Arial; text-align:center; padding:50px; }
+  h1 { color:#ff1a1a; font-size:42px; letter-spacing:2px; }
+  button { background:#ff1a1a; border:none; padding:20px 50px; margin:15px; font-size:20px; 
+           color:#fff; font-weight:bold; border-radius:8px; cursor:pointer; }
+  button:hover { background:#ff3333; }
+  button:disabled { background:#333; cursor:not-allowed; }
+  #dl { display:block; margin-top:20px; font-size:18px; color:#00ff88; text-decoration:none; }
 </style>
 </head>
 <body>
-  <h1>NF STUDIO PRO</h1>
-  <button id="rec">● RECORD</button>
+  <h1>NF VOCAL STUDIO</h1>
+  <p>Press Record. Spit. Get WAV.</p>
+  
+  <button id="record">● RECORD</button>
   <button id="stop" disabled>■ STOP</button>
-  <a id="dl" style="display:none; color:#00ff88;">⬇ DOWNLOAD WAV</a>
+  <a id="dl"></a>
   <p id="status">Ready</p>
 
-<script src="https://cdn.jsdelivr.net/npm/recorder-js@1.1.0/dist/recorder.min.js"></script>
 <script>
-let audioCtx, mic, recorder;
-let comp, eq, gate, deesser, limiter, reverb, delay;
+let audioCtx, mediaRecorder, chunks = [];
+let source, comp, eq, reverb, delay;
 
-async function init() {
+async function setup() {
   audioCtx = new AudioContext({sampleRate: 44100});
-  let stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: false}});
-  mic = audioCtx.createMediaStreamSource(stream);
+  let stream = await navigator.mediaDevices.getUserMedia({audio: true});
   
-  // 1. NOISE GATE - kills room noise between words
-  gate = audioCtx.createGain();
-  gate.gain.value = 0;
-  let gateDetector = audioCtx.createAnalyser();
+  // AUDIO CHAIN
+  source = audioCtx.createMediaStreamSource(stream);
   
-  // 2. EQ - NF: cut mud 250Hz, boost 5k
+  // 1. EQ - NF clarity
   eq = audioCtx.createBiquadFilter();
-  eq.type = "peaking"; eq.frequency.value = 5000; eq.gain.value = 7; eq.Q.value = 1;
-  let lowCut = audioCtx.createBiquadFilter();
-  lowCut.type = "highpass"; lowCut.frequency.value = 90;
-  let mudCut = audioCtx.createBiquadFilter();
-  mudCut.type = "peaking"; mudCut.frequency.value = 250; mudCut.gain.value = -3; mudCut.Q.value = 1;
+  eq.type = "peaking"; eq.frequency.value = 5000; eq.gain.value = 6;
   
-  // 3. DE-ESSER - tames harsh S sounds
-  deesser = audioCtx.createBiquadFilter();
-  deesser.type = "peaking"; deesser.frequency.value = 7000; deesser.gain.value = -4; deesser.Q.value = 2;
-  
-  // 4. COMPRESSION - aggressive NF ratio
+  // 2. COMPRESSION - makes it loud and upfront
   comp = audioCtx.createDynamicsCompressor();
-  comp.threshold.value = -20; comp.knee.value = 15; comp.ratio.value = 14;
-  comp.attack.value = 0.002; comp.release.value = 0.08;
+  comp.threshold.value = -18; comp.knee.value = 20; comp.ratio.value = 12;
+  comp.attack.value = 0.003; comp.release.value = 0.1;
   
-  // 5. REVERB - tiny room
+  // 3. REVERB - tiny room
   reverb = audioCtx.createConvolver();
-  let ir = await fetch('https://cdn.jsdelivr.net/gh/mohayonao/web-audio-convolver@master/impulses/irroom.wav').then(r=>r.arrayBuffer());
-  reverb.buffer = await audioCtx.decodeAudioData(ir);
+  fetch('https://cdn.jsdelivr.net/gh/mohayonao/web-audio-convolver@master/impulses/irroom.wav')
+    .then(r=>r.arrayBuffer()).then(b=>audioCtx.decodeAudioData(b)).then(buf=>reverb.buffer=buf);
   
-  // 6. DELAY - 120ms slap
+  // 4. DELAY - slap
   delay = audioCtx.createDelay(); delay.delayTime.value = 0.12;
-  let fb = audioCtx.createGain(); fb.gain.value = 0.12; delay.connect(fb).connect(delay);
   
-  // 7. LIMITER - final loudness, no clipping
-  limiter = audioCtx.createDynamicsCompressor();
-  limiter.threshold.value = -1; limiter.ratio.value = 20; limiter.attack.value = 0.001; limiter.release.value = 0.05;
-  
-  // CHAIN: Mic -> Gate -> EQ -> DeEss -> Comp -> FX -> Limiter -> Out
+  // MIX
   let dry = audioCtx.createGain(); dry.gain.value = 1;
-  let wet = audioCtx.createGain(); wet.gain.value = 0.07;
+  let wet = audioCtx.createGain(); wet.gain.value = 0.08;
   
-  mic.connect(gate).connect(lowCut).connect(mudCut).connect(eq).connect(deesser).connect(comp);
+  source.connect(eq).connect(comp);
   comp.connect(dry);
   comp.connect(reverb).connect(wet);
   comp.connect(delay).connect(wet);
-  dry.connect(limiter); wet.connect(limiter); limiter.connect(audioCtx.destination);
+  dry.connect(audioCtx.destination);
+  wet.connect(audioCtx.destination);
   
-  // RecorderJS for WAV export
-  recorder = new Recorder(audioCtx, {bufferSize: 4096, numChannels: 1});
-  recorder.init(stream);
+  // RECORDER - records the PROCESSED sound
+  let dest = audioCtx.createMediaStreamDestination();
+  dry.connect(dest); wet.connect(dest);
+  
+  mediaRecorder = new MediaRecorder(dest.stream, {mimeType: 'audio/webm'});
+  mediaRecorder.ondataavailable = e => chunks.push(e.data);
+  mediaRecorder.onstop = () => {
+    let blob = new Blob(chunks, {type: 'audio/webm'});
+    let url = URL.createObjectURL(blob);
+    let dl = document.getElementById('dl');
+    dl.href = url;
+    dl.download = 'NF-Vocal.wav';
+    dl.textContent = '⬇ DOWNLOAD YOUR WAV';
+    document.getElementById('status').textContent = 'Done! Download above.';
+  };
 }
 
-init();
+setup();
 
-// Simple gate logic
-setInterval(()=>{
-  if(!mic) return;
-  // this is basic - real gate needs more code but this works
-}, 50);
-
-document.getElementById('rec').onclick = () => {
-  recorder.start();
-  document.getElementById('rec').disabled = true;
+document.getElementById('record').onclick = () => {
+  chunks = [];
+  mediaRecorder.start();
+  document.getElementById('record').disabled = true;
   document.getElementById('stop').disabled = false;
-  document.getElementById('status').textContent = "RECORDING...";
+  document.getElementById('status').textContent = 'Recording...';
 };
 
 document.getElementById('stop').onclick = () => {
-  recorder.stop();
-  recorder.exportWAV(blob => {
-    let url = URL.createObjectURL(blob);
-    let dl = document.getElementById('dl');
-    dl.href = url; dl.download = "NF-vocal-44k.wav"; dl.style.display = "inline-block";
-  });
-  document.getElementById('rec').disabled = false;
+  mediaRecorder.stop();
+  document.getElementById('record').disabled = false;
   document.getElementById('stop').disabled = true;
-  document.getElementById('status').textContent = "Exported 44.1kHz WAV";
 };
 </script>
 </body>
-  </html>
+</html>
