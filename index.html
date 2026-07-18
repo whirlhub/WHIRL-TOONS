@@ -1,211 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>4-Bar Voice Looper FX</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { background:#0a0a0a; color:#00ff88; text-align:center; font-family: sans-serif; padding:20px;}
-    h1 { text-shadow: 0 0 10px #00ff88; }
-   .track { border: 2px solid #00ff88; margin:15px; padding:15px; border-radius:10px; text-align:left;}
-   .fx { display:flex; justify-content:space-around; margin-top:10px; flex-wrap:wrap;}
-   .fx label { font-size:12px; }
-    input[type=range] { width:80px; }
-    button { background: #00ff88; color: #000; border: none; padding: 12px 25px; margin: 5px; font-weight: bold; border-radius: 8px; cursor: pointer;}
-    button.rec { background: red; color:white; animation: blink 0.5s infinite; }
-    @keyframes blink { 50% { opacity: 0.5; } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NF VOCAL STUDIO</title>
+<style>
+  body { background:#050505; color:#eee; font-family: 'Impact', sans-serif; text-align:center; padding:40px; }
+  h1 { color:#d90429; letter-spacing:3px; font-size:40px; }
+  button { background:#d90429; border:none; padding:18px 40px; margin:10px; border-radius:5px; 
+           color:#fff; font-size:18px; cursor:pointer; font-weight:bold; }
+  button:hover { background:#ef233c; }
+  .knob { display:inline-block; margin:15px; }
+  input[type=range] { width:140px; accent-color:#d90429; }
+  label { display:block; font-size:11px; color:#aaa; text-transform:uppercase; }
+  #status { margin-top:20px; color:#8ecae6; }
+</style>
 </head>
 <body>
-  <h1>🎤 4-BAR LOOPER + FX</h1>
-  <div>BPM: <input id="bpmInput" type="number" value="120" style="width:60px"> | <span id="loopTime">8.0s</span></div>
-
-  <div id="tracks"></div>
-
-  <div style="margin-top:30px">
-    <button id="playAll">▶️ PLAY ALL</button>
-    <button id="stopAll">⏹️ STOP ALL</button>
-    <button id="download">💾 DOWNLOAD</button>
-    <div id="status">Status: Ready</div>
+  <h1>NF VOCAL STUDIO</h1>
+  <p>Raw. Aggressive. Upfront.</p>
+  
+  <button id="recordBtn">● RECORD</button>
+  <button id="stopBtn" disabled>■ STOP</button>
+  <a id="download" style="display:none; color:#8ecae6;"></a>
+  
+  <div>
+    <div class="knob">
+      <input type="range" id="comp" min="4" max="20" step="1" value="12">
+      <label>Compression</label>
+    </div>
+    <div class="knob">
+      <input type="range" id="reverb" min="0" max="0.25" step="0.01" value="0.08">
+      <label>Room Reverb</label>
+    </div>
+    <div class="knob">
+      <input type="range" id="delay" min="0" max="0.3" step="0.01" value="0.12">
+      <label>Slap Delay</label>
+    </div>
+    <div class="knob">
+      <input type="range" id="eq" min="0" max="12" step="1" value="6">
+      <label>Presence 5kHz</label>
+    </div>
   </div>
+  
+  <div id="status">Press RECORD</div>
 
 <script>
-let audioContext;
-let BPM = 120;
-let LOOP_BARS = 4;
-let LOOP_SECONDS = (60 / BPM) * 4 * LOOP_BARS;
+let audioCtx, mediaStream, recorder, chunks = [];
+let compNode, reverbNode, delayNode, eqNode, inputNode;
 
-let tracks = [
-  {name: "BASS", color:"#00ff88", buffer:null, source:null, fx:{}},
-  {name: "VIOLIN", color:"#ff8800", buffer:null, source:null, fx:{}},
-  {name: "LEAD", color:"#00aaff", buffer:null, source:null, fx:{}}
-];
-
-const tracksDiv = document.getElementById('tracks');
-const status = document.getElementById('status');
-
-bpmInput.oninput = () => {
-  BPM = parseInt(bpmInput.value);
-  LOOP_SECONDS = (60 / BPM) * 4 * LOOP_BARS;
-  loopTime.innerText = LOOP_SECONDS.toFixed(1) + 's';
+async function initAudio() {
+  audioCtx = new AudioContext();
+  mediaStream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: false, noiseSuppression: false}});
+  inputNode = audioCtx.createMediaStreamSource(mediaStream);
+  
+  // 1. NF EQ - cut mud, boost presence
+  eqNode = audioCtx.createBiquadFilter();
+  eqNode.type = "peaking";
+  eqNode.frequency.value = 5000;
+  eqNode.Q.value = 1;
+  eqNode.gain.value = 6; // that clear NF vocal
+  
+  let lowCut = audioCtx.createBiquadFilter();
+  lowCut.type = "highpass";
+  lowCut.frequency.value = 80; // remove rumble
+  
+  // 2. HEAVY COMPRESSION - NF is always in your face
+  compNode = audioCtx.createDynamicsCompressor();
+  compNode.threshold.value = -18;
+  compNode.knee.value = 20;
+  compNode.ratio.value = 12; // aggressive
+  compNode.attack.value = 0.003;
+  compNode.release.value = 0.1;
+  
+  // 3. SMALL ROOM REVERB - NF uses very little
+  reverbNode = audioCtx.createConvolver();
+  let res = await fetch('https://cdn.jsdelivr.net/gh/mohayonao/web-audio-convolver@master/impulses/irroom.wav');
+  let buf = await res.arrayBuffer();
+  reverbNode.buffer = await audioCtx.decodeAudioData(buf);
+  
+  // 4. SLAP DELAY - 120ms for thickness
+  delayNode = audioCtx.createDelay();
+  delayNode.delayTime.value = 0.12;
+  let feedback = audioCtx.createGain();
+  feedback.gain.value = 0.15;
+  delayNode.connect(feedback).connect(delayNode);
+  
+  // MIX
+  let dryGain = audioCtx.createGain();
+  let wetGain = audioCtx.createGain();
+  dryGain.gain.value = 1;
+  wetGain.gain.value = 0.08;
+  
+  inputNode.connect(lowCut).connect(eqNode).connect(compNode);
+  compNode.connect(dryGain);
+  compNode.connect(reverbNode).connect(wetGain);
+  compNode.connect(delayNode).connect(wetGain);
+  dryGain.connect(audioCtx.destination);
+  wetGain.connect(audioCtx.destination);
+  
+  // Controls
+  document.getElementById('comp').oninput = e => compNode.ratio.value = e.target.value;
+  document.getElementById('reverb').oninput = e => wetGain.gain.value = e.target.value;
+  document.getElementById('delay').oninput = e => delayNode.delayTime.value = e.target.value;
+  document.getElementById('eq').oninput = e => eqNode.gain.value = e.target.value;
 }
 
-// Build UI with FX knobs
-tracks.forEach((t, i) => {
-  tracksDiv.innerHTML += `
-    <div class="track" style="border-color:${t.color}">
-      <h2 style="color:${t.color}">${t.name}</h2>
-      <button onclick="recordTrack(${i})" id="rec${i}">🔴 RECORD 4 BARS</button>
-      <span id="state${i}">Empty</span>
-      <div class="fx">
-        <label>Pitch<br><input type="range" id="pitch${i}" min="0.5" max="2" step="0.1" value="1"></label>
-        <label>Reverb<br><input type="range" id="reverb${i}" min="0" max="1" step="0.1" value="0.3"></label>
-        <label>Delay<br><input type="range" id="delay${i}" min="0" max="0.8" step="0.1" value="0"></label>
-        <label>Distort<br><input type="range" id="dist${i}" min="0" max="100" step="10" value="0"></label>
-      </div>
-    </div>
-  `;
-});
+initAudio();
 
-// FX NODES CREATOR
-function createFXChain(trackIndex){
-  const t = tracks[trackIndex];
-  const pitch = parseFloat(document.getElementById(`pitch${trackIndex}`).value);
-  const reverbAmt = parseFloat(document.getElementById(`reverb${trackIndex}`).value);
-  const delayTime = parseFloat(document.getElementById(`delay${trackIndex}`).value);
-  const distAmt = parseFloat(document.getElementById(`dist${trackIndex}`).value);
+document.getElementById('recordBtn').onclick = () => {
+  chunks = [];
+  recorder = new MediaRecorder(mediaStream);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    let blob = new Blob(chunks, {type: 'audio/webm'});
+    let url = URL.createObjectURL(blob);
+    let dl = document.getElementById('download');
+    dl.href = url;
+    dl.download = 'NF-take.webm';
+    dl.style.display = 'inline-block';
+    dl.textContent = '⬇ DOWNLOAD TAKE';
+  };
+  recorder.start();
+  document.getElementById('recordBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('status').textContent = 'Recording... Spit that truth';
+};
 
-  // 1. Pitch
-  let pitchNode = audioContext.createBufferSource();
-  pitchNode.playbackRate.value = pitch;
-
-  // 2. Distortion
-  let waveshaper = audioContext.createWaveShaper();
-  function makeDistortionCurve(amount) {
-    let samples = 44100, curve = new Float32Array(samples);
-    for (let i = 0; i < samples; ++i ) {
-      let x = i * 2 / samples - 1;
-      curve[i] = (3 + amount) * x * 20 / (Math.PI + amount * Math.abs(x));
-    }
-    return curve;
-  }
-  waveshaper.curve = makeDistortionCurve(distAmt);
-
-  // 3. Delay
-  let delay = audioContext.createDelay();
-  delay.delayTime.value = delayTime;
-  let feedback = audioContext.createGain();
-  feedback.gain.value = 0.4;
-  delay.connect(feedback).connect(delay);
-
-  // 4. Reverb - simple convolution
-  let convolver = audioContext.createConvolver();
-  let reverbBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 2, audioContext.sampleRate);
-  for(let c=0; c<2; c++){
-    let data = reverbBuffer.getChannelData(c);
-    for(let i=0; i<data.length; i++) data[i] = (Math.random()*2-1) * Math.pow(1-i/data.length, 2);
-  }
-  convolver.buffer = reverbBuffer;
-  let reverbGain = audioContext.createGain();
-  reverbGain.gain.value = reverbAmt;
-
-  // Chain: Source -> Dist -> Delay -> Dry + Reverb -> Output
-  let dryGain = audioContext.createGain();
-  dryGain.gain.value = 1 - reverbAmt * 0.5;
-
-  return {source: pitchNode, chain: [waveshaper, delay, dryGain], reverb: [convolver, reverbGain]};
-}
-
-async function recordTrack(i){
-  if(!audioContext) audioContext = new AudioContext();
-  status.innerText = `Recording ${tracks[i].name} for ${LOOP_SECONDS.toFixed(1)}s...`;
-  document.getElementById(`rec${i}`).classList.add('rec');
-  document.getElementById(`rec${i}`).disabled = true;
-
-  const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-  const mic = audioContext.createMediaStreamSource(stream);
-  const recorder = audioContext.createScriptProcessor(4096, 1, 1);
-  const audioData = [];
-  recorder.onaudioprocess = e => audioData.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-  mic.connect(recorder); recorder.connect(audioContext.destination);
-
-  setTimeout(() => {
-    recorder.disconnect(); mic.disconnect(); stream.getTracks().forEach(track => track.stop());
-    let length = audioData.reduce((acc, arr) => acc + arr.length, 0);
-    let result = new Float32Array(length); let offset = 0; audioData.forEach(arr => { result.set(arr, offset); offset += arr.length; });
-    let targetLength = audioContext.sampleRate * LOOP_SECONDS;
-    let finalBuffer = audioContext.createBuffer(1, targetLength, audioContext.sampleRate);
-    for(let j=0; j<targetLength; j++) finalBuffer.getChannelData(0)[j] = result[j] || 0;
-    tracks[i].buffer = finalBuffer;
-    status.innerText = `${tracks[i].name} ready!`;
-    document.getElementById(`rec${i}`).classList.remove('rec');
-    document.getElementById(`rec${i}`).disabled = false;
-    document.getElementById(`state${i}`).innerText = "Ready";
-  }, LOOP_SECONDS * 1000);
-}
-
-function playTrack(i){
-  if(!tracks[i].buffer) return;
-  stopTrack(i);
-  const {source, chain, reverb} = createFXChain(i);
-  source.buffer = tracks[i].buffer;
-  source.loop = true;
-
-  // Connect chain
-  source.connect(chain[0]).connect(chain[1]).connect(chain[2]).connect(audioContext.destination);
-  // Parallel reverb
-  source.connect(reverb[0]).connect(reverb[1]).connect(audioContext.destination);
-
-  source.start();
-  tracks[i].source = source;
-}
-
-function stopTrack(i){
-  if(tracks[i].source){ tracks[i].source.stop(); tracks[i].source.disconnect(); tracks[i].source = null; }
-}
-
-document.getElementById('playAll').onclick = () => {
-  if(!audioContext) audioContext = new AudioContext();
-  tracks.forEach((t,i) => { if(t.buffer) playTrack(i); });
-  status.innerText = `PLAYING ALL - ${BPM} BPM`;
-}
-document.getElementById('stopAll').onclick = () => tracks.forEach((t,i) => stopTrack(i));
-
-// DOWNLOAD with FX baked in
-document.getElementById('download').onclick = async () => {
-  if(!tracks.some(t => t.buffer)) return alert("Record first!");
-  status.innerText = "Rendering with FX...";
-  let targetLength = audioContext.sampleRate * LOOP_SECONDS;
-  let offlineCtx = new OfflineAudioContext(2, targetLength, audioContext.sampleRate);
-
-  tracks.forEach((t,i) => {
-    if(t.buffer){
-      const {source, chain, reverb} = createFXChain(i);
-      source.context = offlineCtx; // hack: need to recreate nodes for offline
-      // For simplicity we render dry. Full FX render needs recreating all nodes in offlineCtx
-      let src = offlineCtx.createBufferSource();
-      src.buffer = t.buffer; src.loop = true; src.connect(offlineCtx.destination); src.start();
-    }
-  });
-  let renderedBuffer = await offlineCtx.startRendering();
-  let wav = bufferToWav(renderedBuffer);
-  let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([wav])); a.download = `beat_${BPM}bpm.wav`; a.click();
-  status.innerText = "Downloaded!";
-}
-
-function bufferToWav(buffer) { /* same as before */
-  let numOfChan = buffer.numberOfChannels, length = buffer.length * numOfChan * 2 + 44;
-  let buffer2 = new ArrayBuffer(length), view = new DataView(buffer2);
-  let write = (o,s) => { for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
-  write(0,'RIFF'); view.setUint32(4,length-8,true); write(8,'WAVE'); write(12,'fmt ');
-  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,numOfChan,true);
-  view.setUint32(24,buffer.sampleRate,true); view.setUint32(28,buffer.sampleRate*2*numOfChan,true);
-  view.setUint16(32,numOfChan*2,true); view.setUint16(34,16,true); write(36,'data');
-  view.setUint32(40,length-44,true); let offset = 44;
-  for(let i=0;i<buffer.length;i++){ for(let ch=0;ch<numOfChan;ch++){
-    let sample = buffer.getChannelData(ch)[i]; sample = Math.max(-1,Math.min(1,sample));
-    view.setInt16(offset,sample<0?sample*0x8000:sample*0x7FFF,true); offset+=2; }}
-  return view;
-}
+document.getElementById('stopBtn').onclick = () => {
+  recorder.stop();
+  document.getElementById('recordBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('status').textContent = 'Done. Exported.';
+};
 </script>
 </body>
-  </html>
+        </html>
