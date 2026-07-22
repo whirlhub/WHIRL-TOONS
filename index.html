@@ -1,99 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NF VOCAL STUDIO</title>
-<style>
-  body { background:#0a0a0a; color:#fff; font-family:Arial; text-align:center; padding:50px; }
-  h1 { color:#ff1a1a; font-size:42px; letter-spacing:2px; }
-  button { background:#ff1a1a; border:none; padding:20px 50px; margin:15px; font-size:20px; 
-           color:#fff; font-weight:bold; border-radius:8px; cursor:pointer; }
-  button:hover { background:#ff3333; }
-  button:disabled { background:#333; cursor:not-allowed; }
-  #dl { display:block; margin-top:20px; font-size:18px; color:#00ff88; text-decoration:none; }
-</style>
+  <meta charset="UTF-8">
+  <title>ZedPDF Merger</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 40px; background: #f5f5f5; }
+    h1 { color: #2c3e50; }
+    #dropzone { border: 3px dashed #3498db; padding: 40px; margin: 20px; background: white; cursor: pointer; }
+    button { padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    button:hover { background: #2980b9; }
+  </style>
 </head>
 <body>
-  <h1>NF VOCAL STUDIO</h1>
-  <p>Press Record. Spit. Get WAV.</p>
+  <h1>ZedPDF Merger 🇿🇲</h1>
+  <p>Drag and drop your PDFs. Merge them for HELSB, Jobs, School etc.</p>
   
-  <button id="record">● RECORD</button>
-  <button id="stop" disabled>■ STOP</button>
-  <a id="dl"></a>
-  <p id="status">Ready</p>
+  <div id="dropzone">Drop PDFs here or click to select</div>
+  <input type="file" id="fileInput" multiple accept=".pdf" style="display:none">
+  <br><br>
+  <button onclick="mergePDFs()">Merge PDFs</button>
 
-<script>
-let audioCtx, mediaRecorder, chunks = [];
-let source, comp, eq, reverb, delay;
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    let files = [];
 
-async function setup() {
-  audioCtx = new AudioContext({sampleRate: 44100});
-  let stream = await navigator.mediaDevices.getUserMedia({audio: true});
-  
-  // AUDIO CHAIN
-  source = audioCtx.createMediaStreamSource(stream);
-  
-  // 1. EQ - NF clarity
-  eq = audioCtx.createBiquadFilter();
-  eq.type = "peaking"; eq.frequency.value = 5000; eq.gain.value = 6;
-  
-  // 2. COMPRESSION - makes it loud and upfront
-  comp = audioCtx.createDynamicsCompressor();
-  comp.threshold.value = -18; comp.knee.value = 20; comp.ratio.value = 12;
-  comp.attack.value = 0.003; comp.release.value = 0.1;
-  
-  // 3. REVERB - tiny room
-  reverb = audioCtx.createConvolver();
-  fetch('https://cdn.jsdelivr.net/gh/mohayonao/web-audio-convolver@master/impulses/irroom.wav')
-    .then(r=>r.arrayBuffer()).then(b=>audioCtx.decodeAudioData(b)).then(buf=>reverb.buffer=buf);
-  
-  // 4. DELAY - slap
-  delay = audioCtx.createDelay(); delay.delayTime.value = 0.12;
-  
-  // MIX
-  let dry = audioCtx.createGain(); dry.gain.value = 1;
-  let wet = audioCtx.createGain(); wet.gain.value = 0.08;
-  
-  source.connect(eq).connect(comp);
-  comp.connect(dry);
-  comp.connect(reverb).connect(wet);
-  comp.connect(delay).connect(wet);
-  dry.connect(audioCtx.destination);
-  wet.connect(audioCtx.destination);
-  
-  // RECORDER - records the PROCESSED sound
-  let dest = audioCtx.createMediaStreamDestination();
-  dry.connect(dest); wet.connect(dest);
-  
-  mediaRecorder = new MediaRecorder(dest.stream, {mimeType: 'audio/webm'});
-  mediaRecorder.ondataavailable = e => chunks.push(e.data);
-  mediaRecorder.onstop = () => {
-    let blob = new Blob(chunks, {type: 'audio/webm'});
-    let url = URL.createObjectURL(blob);
-    let dl = document.getElementById('dl');
-    dl.href = url;
-    dl.download = 'NF-Vocal.wav';
-    dl.textContent = '⬇ DOWNLOAD YOUR WAV';
-    document.getElementById('status').textContent = 'Done! Download above.';
-  };
-}
+    dropzone.onclick = () => fileInput.click();
+    
+    fileInput.onchange = e => files = [...e.target.files];
+    
+    dropzone.ondrop = e => {
+      e.preventDefault();
+      files = [...e.dataTransfer.files];
+      dropzone.innerText = `${files.length} file(s) selected`;
+    }
+    dropzone.ondragover = e => e.preventDefault();
 
-setup();
+    async function mergePDFs() {
+      if(files.length < 2) return alert("Select at least 2 PDFs bro");
+      
+      const { PDFDocument } = PDFLib;
+      const mergedPdf = await PDFDocument.create();
 
-document.getElementById('record').onclick = () => {
-  chunks = [];
-  mediaRecorder.start();
-  document.getElementById('record').disabled = true;
-  document.getElementById('stop').disabled = false;
-  document.getElementById('status').textContent = 'Recording...';
-};
+      for(const file of files) {
+        const pdfBytes = await file.arrayBuffer();
+        const pdf = await PDFDocument.load(pdfBytes);
+        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        pages.forEach(page => mergedPdf.addPage(page));
+      }
 
-document.getElementById('stop').onclick = () => {
-  mediaRecorder.stop();
-  document.getElementById('record').disabled = false;
-  document.getElementById('stop').disabled = true;
-};
-</script>
+      const mergedBytes = await mergedPdf.save();
+      const blob = new Blob([mergedBytes], {type: 'application/pdf'});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'Merged_Document.pdf';
+      link.click();
+    }
+  </script>
 </body>
-</html>
+  </html>
