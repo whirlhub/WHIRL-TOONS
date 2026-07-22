@@ -1,62 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ZedPDF Merger</title>
-  <style>
-    body { font-family: Arial; text-align: center; padding: 40px; background: #f5f5f5; }
-    h1 { color: #2c3e50; }
-    #dropzone { border: 3px dashed #3498db; padding: 40px; margin: 20px; background: white; cursor: pointer; }
-    button { padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
-    button:hover { background: #2980b9; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WHIRLSTOR IR - International Relations Hub</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: #fff;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 2rem;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    border-bottom: 2px solid #00d4ff;
+  }
+  header h1 {
+    font-size: 3rem;
+    background: linear-gradient(90deg, #00d4ff, #ff00ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: glow 3s ease-in-out infinite;
+  }
+  @keyframes glow {
+    0%,100% { filter: drop-shadow(0 0 10px #00d4ff); }
+    50% { filter: drop-shadow(0 0 25px #ff00ff); }
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 20px;
+    padding: 1.5rem;
+    backdrop-filter: blur(15px);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 0 30px rgba(0,212,255,0.5);
+  }
+  .card h2 { color: #00d4ff; margin-bottom: 1rem; }
+  #worldmap {
+    height: 400px;
+    background: radial-gradient(circle at center, #1a3a4a, #0a1a22);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    border: 2px dashed #00d4ff;
+  }
+</style>
 </head>
 <body>
-  <h1>ZedPDF Merger 🇿🇲</h1>
-  <p>Drag and drop your PDFs. Merge them for HELSB, Jobs, School etc.</p>
-  
-  <div id="dropzone">Drop PDFs here or click to select</div>
-  <input type="file" id="fileInput" multiple accept=".pdf" style="display:none">
-  <br><br>
-  <button onclick="mergePDFs()">Merge PDFs</button>
+  <header>
+    <h1>WHIRLSTOR IR 🌍</h1>
+    <p>Wild. Big. Beautiful. Global Diplomacy Dashboard</p>
+  </header>
 
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script>
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('fileInput');
-    let files = [];
+  <div class="grid">
+    <div class="card">
+      <h2>Live Treaties</h2>
+      <p>Track new agreements, sanctions, and diplomatic moves in real-time.</p>
+      <button onclick="alert('Feature coming: Treaty API')">View Feed</button>
+    </div>
 
-    dropzone.onclick = () => fileInput.click();
-    
-    fileInput.onchange = e => files = [...e.target.files];
-    
-    dropzone.ondrop = e => {
-      e.preventDefault();
-      files = [...e.dataTransfer.files];
-      dropzone.innerText = `${files.length} file(s) selected`;
-    }
-    dropzone.ondragover = e => e.preventDefault();
+    <div class="card">
+      <h2>Alliance Map</h2>
+      <div id="worldmap">Interactive World Map Loading...</div>
+    </div>
 
-    async function mergePDFs() {
-      if(files.length < 2) return alert("Select at least 2 PDFs bro");
-      
-      const { PDFDocument } = PDFLib;
-      const mergedPdf = await PDFDocument.create();
+    <div class="card">
+      <h2>Conflict Monitor</h2>
+      <p>Red alerts, peace talks, and crisis zones updated daily.</p>
+    </div>
 
-      for(const file of files) {
-        const pdfBytes = await file.arrayBuffer();
-        const pdf = await PDFDocument.load(pdfBytes);
-        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-        pages.forEach(page => mergedPdf.addPage(page));
-      }
+    <div class="card">
+      <h2>Model UN Simulator</h2>
+      <p>Roleplay as any nation. Debate. Negotiate. Change the world.</p>
+      <button onclick="alert('Feature coming: UN Room')">Enter Room</button>
+    </div>
+  </div>
 
-      const mergedBytes = await mergedPdf.save();
-      const blob = new Blob([mergedBytes], {type: 'application/pdf'});
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'Merged_Document.pdf';
-      link.click();
-    }
-  </script>
+<script>
+  console.log("WHIRLSTOR IR Loaded 🌟");
+  // Next: connect real APIs for news, UN data, world bank, etc.
+</script>
 </body>
   </html>
