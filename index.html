@@ -1,1 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WHIRL MESSENGER</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto}
+  body{background:#fff;height:100vh;display:flex;flex-direction:column}
+  header{background:#0084ff;color:#fff;padding:12px;text-align:center;font-weight:bold;font-size:18px}
+  #chatList{flex:1;overflow-y:auto;background:#f0f2f5}
+ .contact{display:flex;padding:12px;border-bottom:1px solid #ddd;cursor:pointer}
+ .contact:hover{background:#e4e6eb}
+ .avatar{width:50px;height:50px;border-radius:50%;background:#0084ff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;margin-right:10px}
+ .info{flex:1}
+ .name{font-weight:600}
+ .last{color:#65676b;font-size:13px}
 
+  #chatBox{display:none;flex-direction:column;height:100vh}
+ .chatHeader{background:#0084ff;color:#fff;padding:12px;display:flex;align-items:center}
+ .back{margin-right:10px;cursor:pointer;font-size:20px}
+  #messages{flex:1;overflow-y:auto;padding:10px;background:#e5ddd5}
+ .bubble{max-width:70%;padding:10px 14px;margin:6px 0;border-radius:18px;clear:both}
+ .me{background:#0084ff;color:#fff;float:right;border-bottom-right-radius:4px}
+ .them{background:#fff;color:#000;float:left;border-bottom-left-radius:4px}
+ .inputBar{display:flex;padding:8px;background:#fff;border-top:1px solid #ddd}
+ .inputBar input{flex:1;border:none;padding:10px;border-radius:20px;background:#f0f2f5;outline:none}
+ .inputBar button{background:#0084ff;color:#fff;border:none;padding:10px 16px;border-radius:50%;margin-left:8px;cursor:pointer;font-weight:bold}
+</style>
+</head>
+<body>
+
+<header>⚡ WHIRL MESSENGER</header>
+
+<div id="chatList">
+  <div class="contact" onclick="openChat('1')">
+    <div class="avatar">1</div>
+    <div class="info">
+      <div class="name">Me</div>
+      <div class="last">Tap to chat</div>
+    </div>
+  </div>
+  <div class="contact" onclick="openChat('2')">
+    <div class="avatar">2</div>
+    <div class="info">
+      <div class="name">Friend 2</div>
+      <div class="last">Active now</div>
+    </div>
+  </div>
+  <div class="contact" onclick="openChat('5')">
+    <div class="avatar">5</div>
+    <div class="info">
+      <div class="name">Friend 5</div>
+      <div class="last">Last seen</div>
+    </div>
+  </div>
+  <div class="contact" onclick="addContact()">
+    <div class="avatar">+</div>
+    <div class="info">
+      <div class="name">Add WHIRL ID</div>
+    </div>
+  </div>
+</div>
+
+<div id="chatBox">
+  <div class="chatHeader">
+    <span class="back" onclick="back()">←</span>
+    <span id="chatWith">WHIRL ID</span>
+  </div>
+  <div id="messages"></div>
+  <div class="inputBar">
+    <input id="msgInput" placeholder="Message..." onkeydown="if(event.key==='Enter') send()">
+    <button onclick="send()">➤</button>
+  </div>
+</div>
+
+<script>
+let currentChat = null;
+let myID = localStorage.getItem("whirlMyID") || "1"; // default you are 1
+let chats = JSON.parse(localStorage.getItem("whirlChats") || "{}");
+
+function openChat(id){
+  currentChat = id;
+  document.getElementById('chatList').style.display='none';
+  document.getElementById('chatBox').style.display='flex';
+  document.getElementById('chatWith').innerText = 'WHIRL ID: ' + id;
+  renderMessages();
+}
+
+function back(){
+  document.getElementById('chatList').style.display='block';
+  document.getElementById('chatBox').style.display='none';
+}
+
+function send(){
+  let text = document.getElementById('msgInput').value;
+  if(!text) return;
+  if(!chats[currentChat]) chats[currentChat] = [];
+  chats[currentChat].push({from:myID, text:text, time:Date.now()});
+  localStorage.setItem("whirlChats", JSON.stringify(chats));
+  document.getElementById('msgInput').value='';
+  renderMessages();
+}
+
+function renderMessages(){
+  let box = document.getElementById('messages');
+  box.innerHTML='';
+  (chats[currentChat]||[]).forEach(m=>{
+    let div = document.createElement('div');
+    div.className = 'bubble ' + (m.from==myID? 'me' : 'them');
+    div.innerText = m.text;
+    box.appendChild(div);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+function addContact(){
+  let id = prompt("Enter WHIRL ID to add:");
+  if(id){
+    let contactDiv = document.createElement('div');
+    contactDiv.className='contact';
+    contactDiv.onclick=()=>openChat(id);
+    contactDiv.innerHTML=`<div class="avatar">${id}</div><div class="info"><div class="name">Friend ${id}</div><div class="last">Tap to chat</div></div>`;
+    document.getElementById('chatList').insertBefore(contactDiv, document.getElementById('chatList').lastElementChild);
+  }
+}
+
+// Save your ID
+if(!localStorage.getItem("whirlMyID")){
+  let id = prompt("Welcome to WHIRL! Claim your ID number:");
+  localStorage.setItem("whirlMyID", id || "1");
+  location.reload();
+}
+</script>
+</body>
+  </html>
