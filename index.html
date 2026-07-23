@@ -18,11 +18,11 @@
   #chatBox{display:none;flex-direction:column;height:100vh}
 .chatHeader{background:#0084ff;color:#fff;padding:12px;display:flex;align-items:center}
 .back{margin-right:10px;cursor:pointer;font-size:20px}
-  #messages{flex:1;overflow-y:auto;padding:10px;background:#e5ddd5}
-.bubble{max-width:70%;padding:10px 14px;margin:6px 0;border-radius:18px;clear:both}
-.me{background:#0084ff;color:#fff;float:right;border-bottom-right-radius:4px}
-.them{background:#fff;color:#000;float:left;border-bottom-left-radius:4px}
-.inputBar{display:flex;padding:8px;background:#fff;border-top:1px solid #ddd}
+  #messages{flex:1;overflow-y:auto;padding:10px;background:#e5ddd5;display:flex;flex-direction:column}
+.bubble{max-width:70%;padding:10px 14px;margin:6px 0;border-radius:18px}
+.me{background:#0084ff;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.them{background:#fff;color:#000;align-self:flex-start;border-bottom-left-radius:4px}
+.inputBar{display:flex;padding:8px;background:#fff;border-top:1px solid #ddd;position:sticky;bottom:0}
 .inputBar input{flex:1;border:none;padding:10px;border-radius:20px;background:#f0f2f5;outline:none}
 .inputBar button{background:#0084ff;color:#fff;border:none;padding:10px 16px;border-radius:50%;margin-left:8px;cursor:pointer;font-weight:bold}
 </style>
@@ -44,7 +44,7 @@
 <div id="chatBox">
   <div class="chatHeader">
     <span class="back" onclick="back()">←</span>
-    <span id="chatWith">WHIRL ID</span>
+    <span id="chatWith">Contact</span>
   </div>
   <div id="messages"></div>
   <div class="inputBar">
@@ -62,25 +62,23 @@ let chats = JSON.parse(localStorage.getItem("whirlChats") || "{}");
 
 function loadContacts(){
   let list = document.getElementById('chatList');
-  // keep the + button at bottom
   let addBtn = list.lastElementChild;
   list.innerHTML = '';
   contacts.forEach(c=>{
     let div = document.createElement('div');
     div.className='contact';
-    div.onclick=()=>openChat(c.id);
-    div.innerHTML=`<div class="avatar">${c.name[0].toUpperCase()}</div><div class="info"><div class="name">${c.name}</div><div class="last">WHIRL ID: ${c.id}</div></div>`;
+    div.onclick=()=>openChat(c.id, c.name);
+    div.innerHTML=`<div class="avatar">${c.name[0].toUpperCase()}</div><div class="info"><div class="name">${c.name}</div><div class="last">Tap to message</div></div>`;
     list.appendChild(div);
   });
   list.appendChild(addBtn);
 }
 
-function openChat(id){
+function openChat(id, name){
   currentChat = id;
-  let contact = contacts.find(c=>c.id==id);
   document.getElementById('chatList').style.display='none';
   document.getElementById('chatBox').style.display='flex';
-  document.getElementById('chatWith').innerText = contact? contact.name : 'WHIRL ID: ' + id;
+  document.getElementById('chatWith').innerText = name;
   renderMessages();
 }
 
@@ -121,7 +119,6 @@ function addContact(){
   }
 }
 
-// First time setup
 if(!localStorage.getItem("whirlMyID")){
   let id = prompt("Welcome to WHIRL! Claim your ID number:");
   let name = prompt("What's your NAME?");
@@ -133,4 +130,4 @@ if(!localStorage.getItem("whirlMyID")){
 loadContacts();
 </script>
 </body>
- </html>
+   </html>
