@@ -8,28 +8,45 @@
   *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto}
   body{background:#fff;height:100vh;display:flex;flex-direction:column}
   header{background:#0084ff;color:#fff;padding:12px;text-align:center;font-weight:bold;font-size:18px}
+
+  /* NEW SERVER BAR */
+  #serverBar{background:#1a1a1a;color:#fff;padding:8px;display:flex;align-items:center;gap:6px;font-size:12px}
+  #serverBar input{flex:1;border:none;padding:6px 10px;border-radius:15px;background:#333;color:#fff;outline:none}
+  #serverBar button{background:#0084ff;color:#fff;border:none;padding:6px 12px;border-radius:15px;cursor:pointer;font-weight:600}
+  #serverStatus{font-size:10px;text-align:center;padding:4px;background:#222;color:#00ff88}
+
   #chatList{flex:1;overflow-y:auto;background:#f0f2f5}
-.contact{display:flex;padding:12px;border-bottom:1px solid #ddd;cursor:pointer}
-.contact:hover{background:#e4e6eb}
-.avatar{width:50px;height:50px;border-radius:50%;background:#0084ff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;margin-right:10px;font-size:18px}
-.info{flex:1}
-.name{font-weight:600;font-size:16px}
-.last{color:#65676b;font-size:13px}
+ .contact{display:flex;padding:12px;border-bottom:1px solid #ddd;cursor:pointer}
+ .contact:hover{background:#e4e6eb}
+ .avatar{width:50px;height:50px;border-radius:50%;background:#0084ff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;margin-right:10px;font-size:18px}
+ .info{flex:1}
+ .name{font-weight:600;font-size:16px}
+ .last{color:#65676b;font-size:13px}
+
   #chatBox{display:none;flex-direction:column;height:100vh}
-.chatHeader{background:#0084ff;color:#fff;padding:12px;display:flex;align-items:center}
-.back{margin-right:10px;cursor:pointer;font-size:20px}
+ .chatHeader{background:#0084ff;color:#fff;padding:12px;display:flex;align-items:center}
+ .back{margin-right:10px;cursor:pointer;font-size:20px}
+
   #messages{flex:1;overflow-y:auto;padding:10px;background:#e5ddd5;display:flex;flex-direction:column}
-.bubble{max-width:70%;padding:10px 14px;margin:6px 0;border-radius:18px}
-.me{background:#0084ff;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
-.them{background:#fff;color:#000;align-self:flex-start;border-bottom-left-radius:4px}
-.inputBar{display:flex;padding:8px;background:#fff;border-top:1px solid #ddd;position:sticky;bottom:0}
-.inputBar input{flex:1;border:none;padding:10px;border-radius:20px;background:#f0f2f5;outline:none}
-.inputBar button{background:#0084ff;color:#fff;border:none;padding:10px 16px;border-radius:50%;margin-left:8px;cursor:pointer;font-weight:bold}
+ .bubble{max-width:70%;padding:10px 14px;margin:6px 0;border-radius:18px}
+ .me{background:#0084ff;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+ .them{background:#fff;color:#000;align-self:flex-start;border-bottom-left-radius:4px}
+
+ .inputBar{display:flex;padding:8px;background:#fff;border-top:1px solid #ddd;position:sticky;bottom:0}
+ .inputBar input{flex:1;border:none;padding:10px;border-radius:20px;background:#f0f2f5;outline:none}
+ .inputBar button{background:#0084ff;color:#fff;border:none;padding:10px 16px;border-radius:50%;margin-left:8px;cursor:pointer;font-weight:bold}
 </style>
 </head>
 <body>
 
 <header>⚡ WHIRL MESSENGER</header>
+
+<!-- NEW: SERVER IP BAR -->
+<div id="serverBar">
+  <input id="serverIP" placeholder="Server IP: http://192.168.1.5:3000">
+  <button onclick="saveIP()">Save</button>
+</div>
+<div id="serverStatus">Mode: Local Only - Export/Import Files</div>
 
 <div id="chatList">
   <div class="contact" onclick="addContact()">
@@ -54,11 +71,33 @@
 </div>
 
 <script>
+let SERVER = localStorage.getItem("whirlServer") || "";
+document.getElementById('serverIP').value = SERVER;
+updateServerStatus();
+
 let currentChat = null;
 let myID = localStorage.getItem("whirlMyID") || "1";
 let myName = localStorage.getItem("whirlMyName") || "Me";
 let contacts = JSON.parse(localStorage.getItem("whirlContacts") || "[]");
 let chats = JSON.parse(localStorage.getItem("whirlChats") || "{}");
+
+function saveIP(){
+  SERVER = document.getElementById('serverIP').value;
+  localStorage.setItem("whirlServer", SERVER);
+  updateServerStatus();
+  alert("Server saved! If you added an IP, reload to connect to server");
+}
+
+function updateServerStatus(){
+  let status = document.getElementById('serverStatus');
+  if(SERVER){
+    status.innerText = "Mode: REAL CHAT via " + SERVER;
+    status.style.color = "#00ff88";
+  } else {
+    status.innerText = "Mode: Local Only - Export/Import Files";
+    status.style.color = "#ffaa00";
+  }
+}
 
 function loadContacts(){
   let list = document.getElementById('chatList');
@@ -79,6 +118,7 @@ function openChat(id, name){
   document.getElementById('chatList').style.display='none';
   document.getElementById('chatBox').style.display='flex';
   document.getElementById('chatWith').innerText = name;
+  if(SERVER) pollMessages(); // start checking server for new msgs
   renderMessages();
 }
 
@@ -87,12 +127,22 @@ function back(){
   document.getElementById('chatBox').style.display='none';
 }
 
-function send(){
+async function send(){
   let text = document.getElementById('msgInput').value;
   if(!text) return;
-  if(!chats[currentChat]) chats[currentChat] = [];
-  chats[currentChat].push({from:myID, text:text, time:Date.now()});
-  localStorage.setItem("whirlChats", JSON.stringify(chats));
+
+  if(SERVER){
+    // SEND TO SERVER
+    try{
+      await fetch(`${SERVER}/send?from=${myID}&to=${currentChat}&text=${encodeURIComponent(text)}`);
+    }catch(e){ alert("Server not reachable") }
+  } else {
+    // SAVE LOCALLY FOR FILE MODE
+    if(!chats[currentChat]) chats[currentChat] = [];
+    chats[currentChat].push({from:myID, text:text, time:Date.now()});
+    localStorage.setItem("whirlChats", JSON.stringify(chats));
+  }
+
   document.getElementById('msgInput').value='';
   renderMessages();
 }
@@ -107,6 +157,23 @@ function renderMessages(){
     box.appendChild(div);
   });
   box.scrollTop = box.scrollHeight;
+}
+
+// NEW: Check server every 2 seconds for new messages
+async function pollMessages(){
+  if(!SERVER) return;
+  setInterval(async ()=>{
+    try{
+      let res = await fetch(`${SERVER}/get?id=${myID}`);
+      let msgs = await res.json();
+      if(msgs.length>0){
+        if(!chats[currentChat]) chats[currentChat]=[];
+        chats[currentChat] = chats[currentChat].concat(msgs);
+        localStorage.setItem("whirlChats", JSON.stringify(chats));
+        renderMessages();
+      }
+    }catch(e){}
+  }, 2000);
 }
 
 function addContact(){
@@ -130,4 +197,4 @@ if(!localStorage.getItem("whirlMyID")){
 loadContacts();
 </script>
 </body>
-   </html>
+                                                              </html>
